@@ -1,6 +1,8 @@
 package com.br.pso;
 
 import java.util.ArrayList;
+import java.util.Random;
+import java.util.logging.Logger;
 
 import com.br.pso.utils.PSOConstants;
 
@@ -9,6 +11,8 @@ public class PSO {
 	private int numParticles, numDimensions, numIterations;
 	private String functionType, topology;
 	private boolean hasClerc;
+	
+	private final static Logger log = Logger.getLogger(PSO.class.getName());
 
 	public PSO(int numParticles, int numDimensions, int numIterations,
 			String functionType, String topology, boolean hasClerc) {
@@ -46,34 +50,58 @@ public class PSO {
 				numParticles);
 		int i = 0;
 
+		log.info("START initParticles");
 		while (i < numParticles) {
-			initParticle(functionType);
+			particles.add(initParticle(functionType));
+			i++;
 		}
+		
+		log.info("END initParticles");
 
 		return particles;
 	}
 
 	public PSOParticle initParticle(String functionType) {
 		PSOParticle particle = new PSOParticle();
+		int k =0;
+		
+		log.info("initParticle: Initialize Particles");
 
-		while (numDimensions < numParticles) {
+		while (k < numParticles) {
 
 			if (functionType.equals(PSOConstants.SPHERE_FUNCTION)) {
-				int i=0;
+				int i = 0;
+				Random random = new Random();
+				
 				ArrayList<Double> velocity = new ArrayList<Double>(numDimensions);
 				ArrayList<Double> position = new ArrayList<Double>(numDimensions);
-				ArrayList<Double> pBest = new ArrayList<Double>(numDimensions);
-				ArrayList<Double> gBest = new ArrayList<Double>(numDimensions);
+				Double pBest = random.nextDouble();
+				Double gBest = pBest;				
+				
+				log.info("initParticle: Initialize velocity and position with random values");
 				
 				while(i<numDimensions){
-					//COMO GERAR OS VALORES ALEATORIOS?
+					random = new Random();
+					
+					for(int j=0; j<numDimensions; j++){
+						velocity.add(j, random.nextDouble());;
+						position.add(j, random.nextDouble());
+					}		
+					
+					i++;
 					
 				}
+				
+				log.info("initParticle: Velocity size: "+velocity.size());
+				log.info("initParticle: Position size: "+position.size());
+				
 				particle.setVelocity(velocity);
 				particle.setPosition(position);
 				particle.setpBest(pBest);
 				particle.setgBest(gBest);
 			}
+			
+			k++;
 		}
 
 		return particle;
@@ -98,15 +126,59 @@ public class PSO {
 	}
 
 	public void calculatePSOLocal(boolean hasClerc) {
-		double r1, r2, x = 1;
-
+		Random random = new Random();
+		double r1 = random.nextDouble(), r2 = random.nextDouble(), x = 1, c1 = PSOConstants.c1, c2 = PSOConstants.c2;
+			
+		log.info("calculatePSOLocal: Initialize function");
+		
 		if (hasClerc) {
 			x = PSOConstants.clercConstrinctionFactor;
 		}
 
 		if (functionType.equals(PSOConstants.SPHERE_FUNCTION)) {
-
+			log.info("calculatePSOLocal: Calculate PSO for sphere function");
+			
 			ArrayList<PSOParticle> particles = initParticles(PSOConstants.SPHERE_FUNCTION);
+			
+			for (int k=0 ; k< particles.size(); k++) {
+				PSOParticle psoParticle = particles.get(k);
+
+				//Evaluate fitness for each particle
+				Double fitness = calculateFitnessSphere(psoParticle.getPosition());
+				
+				if(fitness < psoParticle.getpBest()){
+					psoParticle.setpBest(fitness);
+					
+					if(fitness < psoParticle.getgBest()){						
+						psoParticle.setgBest(fitness);
+					}					
+				}
+				
+				//Calculates velocity for each particle
+				ArrayList<Double> velocityParticle = psoParticle.getVelocity();
+				
+				for (int l=0; l<velocityParticle.size(); l++) {
+					 Double v = velocityParticle.get(l);
+					 Double position = psoParticle.getPosition().get(l);
+					 Double pBest = psoParticle.getpBest();
+					 Double gBest = psoParticle.getgBest();
+					 v = v + c1*r1*(pBest - position ) + c2*r2*(gBest - position);
+					 velocityParticle.set(l, v);
+				}
+				
+				psoParticle.setVelocity(velocityParticle);
+				
+				//Calculate position for each particle
+				
+				ArrayList<Double> positions = psoParticle.getPosition();
+				
+				for(int m=0; m< positions.size(); m++){
+					Double pos = positions.get(m);
+					pos = pos + velocityParticle.get(m);
+				}
+				
+			}
+			
 
 		} else if (functionType.equals(PSOConstants.RASTRIGIN_FUNCTION)) {
 
@@ -114,6 +186,20 @@ public class PSO {
 
 		}
 
+	}
+
+	private Double calculateFitnessSphere(ArrayList<Double> position) {
+		
+		Double sum = 0.0;
+		
+		for (Double n : position) {
+			
+			sum += Math.pow(n, 2);
+			
+		}
+		
+		return sum;
+		
 	}
 
 	public void calculatePSOGlobal(boolean hasClerc) {
