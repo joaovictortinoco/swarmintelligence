@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Random;
 import java.util.logging.Logger;
 
+import javax.print.attribute.standard.NumberOfDocuments;
+
 import com.br.pso.utils.PSOConstants;
 
 public class PSO {
@@ -78,8 +80,8 @@ public class PSO {
 						numDimensions);
 				ArrayList<Double> position = new ArrayList<Double>(
 						numDimensions);
-				Double pBest = min + (max - min) * random.nextDouble();
-				Double gBest = pBest;
+				ArrayList<Double> pBest = new ArrayList<Double>(numDimensions);
+				ArrayList<Double> gBest = pBest;
 
 				log.info("initParticle: Initialize velocity and position with random values");
 
@@ -100,8 +102,8 @@ public class PSO {
 
 				particle.setVelocity(velocity);
 				particle.setPosition(position);
-				particle.setpBest(pBest);
-				particle.setgBest(gBest);
+				particle.setpBest(position);
+				particle.setgBest(position);
 			}
 
 			k++;
@@ -119,13 +121,16 @@ public class PSO {
 	}
 
 	public void calculatePSO() {
+
 		if (topology.equals(PSOConstants.LOCAL_TOPOLOGY)) {
 			calculatePSOLocal(hasClerc);
 		} else if (topology.equals(PSOConstants.FOCAL_TOPOLOGY)) {
 			calculatePSOFocal(hasClerc);
 		} else if (topology.equals(PSOConstants.GLOBAL_TOPOLOGY)) {
 			calculatePSOGlobal(hasClerc);
-		}
+		} else
+			throw new RuntimeException("No topology with name " + topology);
+
 	}
 
 	public void calculatePSOLocal(boolean hasClerc) {
@@ -139,80 +144,90 @@ public class PSO {
 		}
 
 		ArrayList<PSOParticle> particles = initParticles(PSOConstants.SPHERE_FUNCTION);
+		ArrayList<Double> pbest1 = new ArrayList<Double>(numDimensions);
 
-		for (int k = 0; k < particles.size(); k++) {
-			PSOParticle psoParticle = particles.get(k);
+		for (int i = 0; i < numIterations; i++) {
 
-			// Evaluate fitness for each particle with respective function tyoe
-			if (functionType.equals(PSOConstants.SPHERE_FUNCTION)) {
-				log.info("calculatePSOLocal: Calculate PSO for sphere function");
+			for (int k = 0; k < particles.size(); k++) {
+				PSOParticle psoParticle = particles.get(k);				
+				// Evaluate fitness for each particle with respective function
+				// type
+				if (functionType.equals(PSOConstants.SPHERE_FUNCTION)) {
+					log.info("calculatePSOLocal: Calculates PSO for sphere function");
 
-				Double fitness = calculateFitnessSphere(psoParticle
-						.getPosition());
+					Double fitness = calculateFitnessSphere(psoParticle
+							.getPosition());
 
-				if (fitness < psoParticle.getpBest()) {
-					psoParticle.setpBest(fitness);
+					if (fitness < calculateFitnessSphere(pbest1)) {
+						psoParticle.setpBest(psoParticle.getPosition());
+						pbest1 = psoParticle.getPosition();
+						System.out.println("PBEST " + k + ": "+ psoParticle.getPosition());
 
-					if (fitness < psoParticle.getgBest()) {
-						psoParticle.setgBest(fitness);
+						if (fitness < calculateFitnessSphere(psoParticle
+								.getgBest())) {
+							psoParticle.setgBest(psoParticle.getPosition());
+						}
 					}
+
+				} else if (functionType.equals(PSOConstants.RASTRIGIN_FUNCTION)) {
+					log.info("calculatePSOLocal: Calculate PSO for sphere function");
+
+					
+					// // Double fitness =
+					// calculateFitnessRastrigin(psoParticle.getPosition());
+					//
+					// if (fitness < psoParticle.getpBest()) {
+					// psoParticle.setpBest(fitness);
+					//
+					// if (fitness < psoParticle.getgBest()) {
+					// psoParticle.setgBest(fitness);
+					// }
+					// }
+
+				} else if (functionType
+						.equals(PSOConstants.ROSENBROCK_FUNCTION)) {
+					log.info("calculatePSOLocal: Calculate PSO for sphere function");
+					//
+					// Double fitness =
+					// calculateFitnessRosenbrock(psoParticle.getPosition());
+					//
+					// if (fitness < psoParticle.getpBest()) {
+					// psoParticle.setpBest(fitness);
+					//
+					// if (fitness < psoParticle.getgBest()) {
+					// psoParticle.setgBest(fitness);
+					// }
+					// }
 				}
 
-			} else if (functionType.equals(PSOConstants.RASTRIGIN_FUNCTION)) {
-				log.info("calculatePSOLocal: Calculate PSO for sphere function");
+				// Calculates velocity for each particle
+				ArrayList<Double> velocityParticle = psoParticle.getVelocity();
 
-////				Double fitness = calculateFitnessRastrigin(psoParticle.getPosition());
-//
-//				if (fitness < psoParticle.getpBest()) {
-//					psoParticle.setpBest(fitness);
-//
-//					if (fitness < psoParticle.getgBest()) {
-//						psoParticle.setgBest(fitness);
-//					}
-//				}
+				for (int l = 0; l < velocityParticle.size(); l++) {
+					Double v = velocityParticle.get(l);
+					Double position = psoParticle.getPosition().get(l);
+					Double pBest = psoParticle.getpBest().get(l);
+					Double gBest = psoParticle.getgBest().get(l);
+					v = w * v + c1 * r1 * (pBest - position) + c2 * r2
+							* (gBest - position);
+					velocityParticle.set(l, v);
+				}
 
-			} else if (functionType.equals(PSOConstants.ROSENBROCK_FUNCTION)) {
-				log.info("calculatePSOLocal: Calculate PSO for sphere function");
-//
-//				Double fitness = calculateFitnessRosenbrock(psoParticle.getPosition());
-//
-//				if (fitness < psoParticle.getpBest()) {
-//					psoParticle.setpBest(fitness);
-//
-//					if (fitness < psoParticle.getgBest()) {
-//						psoParticle.setgBest(fitness);
-//					}
-//				}
+				psoParticle.setVelocity(velocityParticle);
+
+				// Calculates position for each particle
+
+				ArrayList<Double> positions = psoParticle.getPosition();
+
+				for (int m = 0; m < positions.size(); m++) {
+					Double pos = positions.get(m);
+					pos = pos + velocityParticle.get(m);
+					positions.set(m, pos);
+				}
+
+				psoParticle.setPosition(positions);
+
 			}
-
-			// Calculates velocity for each particle
-			ArrayList<Double> velocityParticle = psoParticle.getVelocity();
-
-			for (int l = 0; l < velocityParticle.size(); l++) {
-				Double v = velocityParticle.get(l);
-				Double position = psoParticle.getPosition().get(l);
-				Double pBest = psoParticle.getpBest();
-				Double gBest = psoParticle.getgBest();
-				v = w*v + c1 * r1 * (pBest - position) + c2 * r2
-						* (gBest - position);
-				velocityParticle.set(l, v);
-			}
-
-			psoParticle.setVelocity(velocityParticle);
-
-			// Calculates position for each particle
-
-			ArrayList<Double> positions = psoParticle.getPosition();
-
-			for (int m = 0; m < positions.size(); m++) {
-				Double pos = positions.get(m);
-				pos = pos + velocityParticle.get(m);
-				System.out.println(pos);
-				positions.set(m, pos);
-			}
-
-			psoParticle.setPosition(positions);
-
 		}
 
 	}

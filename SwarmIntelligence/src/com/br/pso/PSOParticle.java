@@ -6,8 +6,8 @@ public class PSOParticle {
 
 	private ArrayList<Double> velocity;
 	private ArrayList<Double> position;
-	private Double pBest;
-	private Double gBest;
+	private ArrayList<Double> pBest;
+	private ArrayList<Double> gBest;
 
 	public ArrayList<Double> getVelocity() {
 		return velocity;
@@ -25,19 +25,19 @@ public class PSOParticle {
 		this.position = position;
 	}
 
-	public Double getpBest() {
+	public ArrayList<Double> getpBest() {
 		return pBest;
 	}
 
-	public void setpBest(Double pBest) {
+	public void setpBest(ArrayList<Double> pBest) {
 		this.pBest = pBest;
 	}
 
-	public Double getgBest() {
+	public ArrayList<Double> getgBest() {
 		return gBest;
 	}
 
-	public void setgBest(Double gBest) {
+	public void setgBest(ArrayList<Double> gBest) {
 		this.gBest = gBest;
 	}
 	
